@@ -8,10 +8,16 @@ import { store } from './store';
 import MasonryList from '@react-native-seoul/masonry-list';
 import { useSearchNotesQuery, useAddNoteMutation, useDeleteNoteMutation, useUpdateNoteMutation } from './db'; // Ensure these hooks are correctly imported
 
+/* 
+Homescreen includes all search and add functions of the notes app. 
+Click on a note to open the edit screen.
+*/
 function HomeScreen({ navigation }) {
+  // Hooks used in homescreen
   const [searchQuery, setSearchQuery] = useState('');
   const { data: searchData} = useSearchNotesQuery('');
 
+  // layout for each note item in the list
   const renderItem = ({ item }) => (
     <TouchableOpacity 
       onPress={() => navigation.navigate('AddEditNote', { data: item })} 
@@ -21,11 +27,13 @@ function HomeScreen({ navigation }) {
     </TouchableOpacity>
   );
 
+  // filters based on user search 
   const filteredData = searchData?.filter(item =>
     item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Homescreen visuals
   return (
     <View style={tw`flex-1 items-center justify-center bg-yellow-100`}>
       <TextInput
@@ -34,6 +42,7 @@ function HomeScreen({ navigation }) {
         value={searchQuery}
         onChangeText={setSearchQuery}/>
       {filteredData ? 
+        // Masonry list containing each user inputted element/note
         <MasonryList
           style={tw`p-2`}
           data={filteredData}
@@ -42,7 +51,8 @@ function HomeScreen({ navigation }) {
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}/>  
         : <></>
-      }
+        // Add note button provided from shiftkey notes slides
+      } 
       <TouchableOpacity onPress={() => navigation.navigate('AddEditNote')} style={tw`bg-yellow-300 rounded-full absolute bottom-[5%] right-8 mx-auto items-center flex-1 justify-center w-12 h-12`}>
         <Text style={tw`text-white rounded-sm text-center text-3xl mt--1`}>+</Text>
       </TouchableOpacity>
@@ -50,7 +60,13 @@ function HomeScreen({ navigation }) {
   );
 }
 
+/* 
+AddEditNoteScreen includes all adding and editing functions of the notes app. 
+Add/Edit the note's title, content, or delete the note entirely
+*/
 function AddEditNoteScreen({ route, navigation }) {
+
+  // States + Hooks used in Add/Edit Screen
   const note = route.params?.data;
   const [title, setTitle] = useState(note ? note.title : '');
   const [content, setContent] = useState(note ? note.content : '');
@@ -58,6 +74,7 @@ function AddEditNoteScreen({ route, navigation }) {
   const [deleteNote] = useDeleteNoteMutation();
   const [updateNote] = useUpdateNoteMutation();
 
+  // Handles form submissiion
   const handleSubmit = () => {
     if (title && content) {
       if (note) {
@@ -68,13 +85,16 @@ function AddEditNoteScreen({ route, navigation }) {
         // Add new note
         addNote({title, content});
       }
-      navigation.goBack(); // Navigate back to the home screen
+      // Go back to homecsreen
+      navigation.goBack();
     } 
+    // !! SPECIAL FEATURE !! Added alert to make sure the user inputs both title and content
     else {
       alert('Please enter both title and content');
     }
   };
 
+  // Handles code deletion
   const handleDelete = () => {
     // !! SPECIAL FEATURE !! Alerts confirming deletion for both mobile and web
     if (Platform.OS === 'web') {
@@ -83,7 +103,7 @@ function AddEditNoteScreen({ route, navigation }) {
         if (note) {
           deleteNote(note);
         }
-        navigation.goBack(); // Navigate back to the home screen
+        navigation.goBack(); // Go back to home screen
       }
     } 
     else {
@@ -96,16 +116,18 @@ function AddEditNoteScreen({ route, navigation }) {
                   if (note) {
                     deleteNote(note);
                  }
-                 navigation.goBack(); // Navigate back to the home screen
+                 navigation.goBack(); // Go back to home screen
             }}]
        );
     }
   }
 
+  // Sets navigation options based on whether it's an Add or Edit
   useLayoutEffect(() => {
     navigation.setOptions({
       title: note ? 'Edit Note' : 'Add Note',
       headerRight: () => (note ? (
+        // Adds delete text in top right that sends to the delete handling function
           <TouchableOpacity onPress={handleDelete} style={tw`mr-4`}>
             <Text style={tw`text-red-500`}>Delete</Text>
           </TouchableOpacity>
@@ -114,6 +136,7 @@ function AddEditNoteScreen({ route, navigation }) {
     });
   }, [navigation, note]);
 
+  // Editscreen Visuals
   return (
     <View style={tw`items-center flex-1 p-4 bg-yellow-100`}>
       <TextInput
@@ -141,6 +164,7 @@ function AddEditNoteScreen({ route, navigation }) {
 
 const Stack = createNativeStackNavigator();
 
+// Call App's default function
 export default function App() {
   useDeviceContext(tw);
 
