@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useState, useLayoutEffect} from 'react';
 import { TextInput, TouchableOpacity, View, Text, Alert, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -6,7 +6,7 @@ import tw, { useDeviceContext } from 'twrnc';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import MasonryList from '@react-native-seoul/masonry-list';
-import { useSearchNotesQuery, useAddNoteMutation, useDeleteNoteMutation, useUpdateNoteMutation } from './db'; // Ensure these hooks are correctly imported
+import { useSearchNotesQuery, useAddNoteMutation, useDeleteNoteMutation, useUpdateNoteMutation } from './db';
 
 /* 
 Homescreen includes all search and add functions of the notes app. 
@@ -16,6 +16,14 @@ function HomeScreen({ navigation }) {
   // Hooks used in homescreen
   const [searchQuery, setSearchQuery] = useState('');
   const { data: searchData} = useSearchNotesQuery('');
+  const [ addNote, { data: addNoteData, }] = useAddNoteMutation(); 
+
+  // Navigate to add screen if new note
+  useLayoutEffect(() => {
+    if (addNoteData != null) {
+      navigation.navigate("AddEditNote", { data:  addNoteData });
+    }
+  }, [addNoteData]);
 
   // layout for each note item in the list
   const renderItem = ({ item }) => (
@@ -46,14 +54,14 @@ function HomeScreen({ navigation }) {
         <MasonryList
           style={tw`p-2`}
           data={filteredData}
-          numColumns={1}
+          numColumns={2}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}/>  
         : <></>
         // Add note button provided from shiftkey notes slides
       } 
-      <TouchableOpacity onPress={() => navigation.navigate('AddEditNote')} style={tw`bg-yellow-300 rounded-full absolute bottom-[5%] right-8 mx-auto items-center flex-1 justify-center w-12 h-12`}>
+      <TouchableOpacity onPress={() => { addNote({ title: "", content:  "" }); }} style={tw`bg-yellow-300 rounded-full absolute bottom-[5%] right-8 mx-auto items-center flex-1 justify-center w-12 h-12`}>
         <Text style={tw`text-white rounded-sm text-center text-3xl mt--1`}>+</Text>
       </TouchableOpacity>
     </View>
@@ -74,27 +82,27 @@ function AddEditNoteScreen({ route, navigation }) {
   const [deleteNote] = useDeleteNoteMutation();
   const [updateNote] = useUpdateNoteMutation();
 
-  // Handles form submissiion
-  const handleSubmit = () => {
-    if (title && content) {
-      if (note) {
-        // Update existing note
-        updateNote({ id: note.id, title, content});
-      } 
-      else {
-        // Add new note
-        addNote({title, content});
-      }
-      // Go back to homecsreen
-      navigation.goBack();
-    } 
-    // !! SPECIAL FEATURE !! Added alert to make sure the user inputs both title and content
-    else {
-      alert('Please enter both title and content');
-    }
+  // Handles autocorrect on editing titles
+  const handleChangedTitle = (text) => {
+    setTitle(text);
+    updateNote({
+      id: note.id,
+      title: text,        
+      content: content,
+      })
   };
 
-  // Handles code deletion
+  // Handles autocorrect on editing note content
+  const handleChangedContent = (text) => {
+    setContent(text);
+    updateNote({
+      id: note.id,
+      title: title,        
+      content: text,
+      })
+  };
+
+  // Handles note deletion
   const handleDelete = () => {
     // !! SPECIAL FEATURE !! Alerts confirming deletion for both mobile and web
     if (Platform.OS === 'web') {
@@ -103,61 +111,57 @@ function AddEditNoteScreen({ route, navigation }) {
         if (note) {
           deleteNote(note);
         }
-        navigation.goBack(); // Go back to home screen
+        navigation.goBack(); // go back to homescreen
       }
-    } 
-    else {
+    } else {
       // Mobile confirmation
       Alert.alert(
-         "Delete Note",
-         "Are you sure you want to delete this note?",
-           [{text: "Cancel", style: "cancel"}, {text: "Delete", style: "destructive",
-                onPress: () => {
-                  if (note) {
-                    deleteNote(note);
-                 }
-                 navigation.goBack(); // Go back to home screen
-            }}]
-       );
+        "Delete Note",
+        "Are you sure you want to delete this note?",
+        [{
+          text: "Cancel", style: "cancel"
+        }, {
+          text: "Delete", style: "destructive",
+          onPress: () => {
+            if (note) {
+              deleteNote(note);
+            }
+            navigation.goBack(); // go back to homescreen
+          }
+        }]
+      );
     }
-  }
+  };
 
   // Sets navigation options based on whether it's an Add or Edit
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: note ? 'Edit Note' : 'Add Note',
+      title: note ? 'Notes' : 'Add Note',
       headerRight: () => (note ? (
         // Adds delete text in top right that sends to the delete handling function
-          <TouchableOpacity onPress={handleDelete} style={tw`mr-4`}>
-            <Text style={tw`text-red-500`}>Delete</Text>
-          </TouchableOpacity>
-        ) : null
-      ),
+        <TouchableOpacity onPress={handleDelete} style={tw`mr-4`}>
+          <Text style={tw`text-red-500`}>Delete</Text>
+        </TouchableOpacity>
+      ) : null),
     });
   }, [navigation, note]);
 
-  // Editscreen Visuals
+  // Editscreen visuals
   return (
     <View style={tw`items-center flex-1 p-4 bg-yellow-100`}>
       <TextInput
         style={tw`bg-white p-2 rounded w-[88] mb-2`}
         placeholder="Title"
         value={title}
-        onChangeText={setTitle}
+        onChangeText={handleChangedTitle}
       />
       <TextInput
         style={tw`bg-white p-2 rounded w-[88] mb-8`}
         placeholder="Content"
         value={content}
-        onChangeText={setContent}
+        onChangeText={handleChangedContent}
         multiline
       />
-      <TouchableOpacity
-        onPress={handleSubmit}
-        style={tw`bg-yellow-300 rounded p-3 w-[30] items-center`}
-      >
-        <Text style={tw`text-white`}>{note ? 'Update Note' : 'Add Note'}</Text>
-      </TouchableOpacity>
     </View>
   );
 }
